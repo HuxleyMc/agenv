@@ -6,12 +6,15 @@ agenv stores named "kits" (sets of agent markdown files) and keeps `.agents/` as
 
 ## Installation
 
-```bash
-bun install
-bun run build        # compiles → dist/agenv
+```sh
+curl -fsSL https://raw.githubusercontent.com/huxleymcguffin/agenv/main/install.sh | sh
 ```
 
-Then put `dist/agenv` somewhere on your `$PATH`.
+This downloads the latest release binary for your Mac (Apple Silicon or Intel) and installs it to `/usr/local/bin/agenv`.
+
+**Requirements:** macOS, `curl`
+
+**Manual install:** Download a binary directly from [GitHub Releases](https://github.com/huxleymcguffin/agenv/releases).
 
 ## Quick start
 
