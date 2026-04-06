@@ -7,7 +7,7 @@ agenv stores named "kits" (sets of agent markdown files) and keeps `.agents/` as
 ## Installation
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/HuxleyMc/agenv/refs/heads/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/HuxleyMc/agenv/main/install.sh | sh
 ```
 
 This downloads the latest release binary for your Mac (Apple Silicon or Intel) and installs it to `/usr/local/bin/agenv`.
