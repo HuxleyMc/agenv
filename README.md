@@ -1,8 +1,8 @@
 # agenv
 
-Manage multiple `.agents/` directories per project — like pyenv/rbenv, but for AI agent kits.
+Switch between AI agent configurations instantly — like pyenv, but for your `.agents/` directory.
 
-agenv stores named "kits" (sets of agent markdown files) and keeps `.agents/` as a symlink pointing at the active kit. Switching kits is instant.
+Managing multiple AI agent setups across projects means constantly swapping out markdown files. agenv tracks named "kits" (sets of agent files) and keeps `.agents/` as a symlink pointing at the active one. Switching is instant.
 
 ## Installation
 
@@ -10,7 +10,11 @@ agenv stores named "kits" (sets of agent markdown files) and keeps `.agents/` as
 curl -fsSL https://raw.githubusercontent.com/HuxleyMc/agenv/main/install.sh | sh
 ```
 
-This downloads the latest release binary for your Mac (Apple Silicon or Intel) and installs it to `/usr/local/bin/agenv`.
+Installs to `~/.local/bin/agenv`. Make sure `~/.local/bin` is in your PATH:
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
 
 **Requirements:** macOS, `curl`
 
@@ -19,10 +23,10 @@ This downloads the latest release binary for your Mac (Apple Silicon or Intel) a
 ## Quick start
 
 ```bash
-# In a project directory:
+# In any project directory:
 agenv init                    # bootstrap with a "default" kit
 agenv create backend          # create a new kit
-agenv switch backend          # activate it
+agenv switch backend          # .agents/ now points at backend/
 agenv list                    # see all kits
 agenv status                  # show active kit + symlink details
 ```
@@ -39,7 +43,16 @@ Options:
   --no-migrate  don't absorb existing .agents/ contents into the new kit
 ```
 
-If `.agents/` already exists as a plain directory, its files are migrated into the new kit and the directory is replaced with a symlink.
+If `.agents/` already exists as a plain directory, its files are migrated into the new kit and replaced with a symlink.
+
+### `agenv switch <name>`
+
+Swap the active kit by relinking `.agents/`.
+
+```
+Options:
+  --create   create the kit if it doesn't exist, then switch
+```
 
 ### `agenv create <name>`
 
@@ -50,15 +63,6 @@ Options:
   --from <kit>           copy an existing kit as the starting point
   --switch               immediately activate after creating
   -d, --description <t>  short description stored in config.toml
-```
-
-### `agenv switch <name>`
-
-Swap the active kit by relinking `.agents/`.
-
-```
-Options:
-  --create   create the kit if it doesn't exist, then switch
 ```
 
 ### `agenv list` / `agenv ls`
@@ -87,7 +91,7 @@ Remove a kit permanently.
 
 ```
 Options:
-  --force  allow deleting the active kit (auto-switches to another)
+  --force    allow deleting the active kit (auto-switches to another)
   -y, --yes  skip confirmation prompt
 ```
 
@@ -115,6 +119,8 @@ Options:
 
 ## How it works
 
+Kits are just directories. The `.agents/` symlink is the only magic.
+
 - **Global mode** (`~/.agenv/`): kit store is shared across all projects. Symlink targets are absolute paths.
 - **Local mode** (`.agenv/` in cwd): kit store lives inside the project. Symlink targets are relative, making the store git-portable.
 
@@ -137,8 +143,9 @@ Store layout:
 ## Development
 
 ```bash
-bun run dev -- <cmd>   # run without building (e.g. bun run dev -- init)
-bun test               # run all tests
-bun run lint           # type-check via tsc --noEmit
-bun run build          # compile self-contained binary → dist/agenv
+bun install           # install dependencies
+bun run dev -- <cmd>  # run without building (e.g. bun run dev -- init)
+bun test              # run all tests
+bun run lint          # type-check via tsc --noEmit
+bun run build         # compile self-contained binary → dist/agenv
 ```
