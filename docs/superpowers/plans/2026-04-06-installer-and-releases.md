@@ -126,7 +126,7 @@ Create `install.sh` at the repo root:
 #!/bin/sh
 set -e
 
-REPO="huxleymcguffin/agenv"
+REPO="HuxleyMc/agenv"
 INSTALL_DIR="/usr/local/bin"
 BINARY_NAME="agenv"
 
@@ -240,14 +240,14 @@ Replace it with:
 ## Installation
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/huxleymcguffin/agenv/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/HuxleyMc/agenv/main/install.sh | sh
 ```
 
 This downloads the latest release binary for your Mac (Apple Silicon or Intel) and installs it to `/usr/local/bin/agenv`.
 
 **Requirements:** macOS, `curl`
 
-**Manual install:** Download a binary directly from [GitHub Releases](https://github.com/huxleymcguffin/agenv/releases).
+**Manual install:** Download a binary directly from [GitHub Releases](https://github.com/HuxleyMc/agenv/releases).
 ```
 
 - [ ] **Step 2: Verify the README renders correctly**
@@ -286,11 +286,11 @@ git push origin v0.1.0
 
 - [ ] **Step 3: Monitor the Actions run**
 
-Go to `https://github.com/huxleymcguffin/agenv/actions` and watch the `Release` workflow. All steps should be green.
+Go to `https://github.com/HuxleyMc/agenv/actions` and watch the `Release` workflow. All steps should be green.
 
 - [ ] **Step 4: Verify the release assets**
 
-Go to `https://github.com/huxleymcguffin/agenv/releases/tag/v0.1.0`. Confirm:
+Go to `https://github.com/HuxleyMc/agenv/releases/tag/v0.1.0`. Confirm:
 - Release exists with auto-generated notes
 - Two assets present: `agenv-darwin-arm64` and `agenv-darwin-x64`
 
@@ -300,7 +300,7 @@ Go to `https://github.com/huxleymcguffin/agenv/releases/tag/v0.1.0`. Confirm:
 # Temporarily move any existing agenv binary out of the way
 sudo mv /usr/local/bin/agenv /usr/local/bin/agenv.bak 2>/dev/null || true
 
-curl -fsSL https://raw.githubusercontent.com/huxleymcguffin/agenv/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/HuxleyMc/agenv/main/install.sh | sh
 
 agenv --version
 # or

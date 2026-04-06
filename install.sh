@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="huxleymcguffin/agenv"
+REPO="HuxleyMc/agenv"
 INSTALL_DIR="/usr/local/bin"
 BINARY_NAME="agenv"
 
