@@ -27,6 +27,7 @@ export PATH="$HOME/.local/bin:$PATH"
 agenv init                    # bootstrap with a "default" kit
 agenv create backend          # create a new kit
 agenv switch backend          # .agents/ now points at backend/
+agenv switch                  # pick a kit from an interactive menu
 agenv list                    # see all kits
 agenv status                  # show active kit + symlink details
 ```
@@ -45,9 +46,9 @@ Options:
 
 If `.agents/` already exists as a plain directory, its files are migrated into the new kit and replaced with a symlink.
 
-### `agenv switch <name>`
+### `agenv switch [name]`
 
-Swap the active kit by relinking `.agents/`.
+Swap the active kit by relinking `.agents/`. If `name` is omitted, an interactive menu lets you pick from available kits.
 
 ```
 Options:
