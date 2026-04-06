@@ -39,3 +39,44 @@ test("shell-init invalid shell exits 1", () => {
   expect(result.exitCode).toBe(1);
   expect(result.stderr).toMatch(/unsupported shell/i);
 });
+
+test("shell-init bash prints instructions to stderr", () => {
+  const result = agenvInDir(["shell-init", "bash"], tempDir);
+  expect(result.stderr).toContain("~/.bashrc");
+  expect(result.stderr).toContain('eval "$(agenv shell-init bash)"');
+});
+
+test("shell-init zsh prints instructions to stderr", () => {
+  const result = agenvInDir(["shell-init", "zsh"], tempDir);
+  expect(result.stderr).toContain("~/.zshrc");
+  expect(result.stderr).toContain('eval "$(agenv shell-init zsh)"');
+});
+
+test("shell-init fish prints instructions to stderr", () => {
+  const result = agenvInDir(["shell-init", "fish"], tempDir);
+  expect(result.stderr).toContain("~/.config/fish/config.fish");
+  expect(result.stderr).toContain('eval "$(agenv shell-init fish)"');
+});
+
+test("shell-init starship prints paste instructions to stderr", () => {
+  const result = agenvInDir(["shell-init", "starship"], tempDir);
+  expect(result.stderr).toContain("~/.config/starship.toml");
+  expect(result.stderr).not.toContain("eval");
+});
+
+test("shell-init pwsh prints paste instructions to stderr", () => {
+  const result = agenvInDir(["shell-init", "pwsh"], tempDir);
+  expect(result.stderr).toContain("$PROFILE");
+  expect(result.stderr).not.toContain("eval");
+});
+
+test("shell-init instructions do not appear in stdout", () => {
+  const result = agenvInDir(["shell-init", "zsh"], tempDir);
+  expect(result.stdout).not.toContain("~/.zshrc");
+  expect(result.stdout).not.toContain("eval");
+});
+
+test("shell-init --bin custom is reflected in eval instruction", () => {
+  const result = agenvInDir(["shell-init", "zsh", "--bin", "/usr/local/bin/agenv"], tempDir);
+  expect(result.stderr).toContain('eval "$(/usr/local/bin/agenv shell-init zsh)"');
+});

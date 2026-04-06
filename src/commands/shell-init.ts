@@ -74,6 +74,47 @@ function generatePwshSnippet(bin: string): string {
   );
 }
 
+function generateInstructions(shell: ShellType, bin: string): string {
+  switch (shell) {
+    case "bash":
+      return (
+        `# Shell integration: add the following to ~/.bashrc\n` +
+        `#\n` +
+        `#   eval "$(${bin} shell-init bash)"\n` +
+        `#\n` +
+        `# Then restart your shell or run: source ~/.bashrc\n`
+      );
+    case "zsh":
+      return (
+        `# Shell integration: add the following to ~/.zshrc\n` +
+        `#\n` +
+        `#   eval "$(${bin} shell-init zsh)"\n` +
+        `#\n` +
+        `# Then restart your shell or run: source ~/.zshrc\n`
+      );
+    case "fish":
+      return (
+        `# Shell integration: add the following to ~/.config/fish/config.fish\n` +
+        `#\n` +
+        `#   eval "$(${bin} shell-init fish)"\n` +
+        `#\n` +
+        `# Then restart your shell or run: source ~/.config/fish/config.fish\n`
+      );
+    case "starship":
+      return (
+        `# Shell integration: paste the snippet above into ~/.config/starship.toml\n` +
+        `#\n` +
+        `# Then restart your shell.\n`
+      );
+    case "pwsh":
+      return (
+        `# Shell integration: paste the snippet above into $PROFILE\n` +
+        `#\n` +
+        `# Then restart your shell or run: . $PROFILE\n`
+      );
+  }
+}
+
 export function registerShellInit(program: Command): void {
   program
     .command("shell-init [shell]")
@@ -113,5 +154,6 @@ export function registerShellInit(program: Command): void {
       }
 
       console.log(snippet);
+      process.stderr.write(generateInstructions(targetShell, opts.bin));
     });
 }
