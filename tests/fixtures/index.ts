@@ -13,11 +13,13 @@ export function cleanupTempDir(dir: string): void {
 // Run the CLI from a specific working directory
 export function agenvInDir(
   args: string[],
-  cwd: string
+  cwd: string,
+  opts?: { home?: string }
 ): { stdout: string; stderr: string; exitCode: number } {
+  const home = opts?.home ?? cwd;
   const result = Bun.spawnSync(["bun", new URL("../../src/index.ts", import.meta.url).pathname, ...args], {
     cwd,
-    env: { ...process.env, HOME: cwd },
+    env: { ...process.env, HOME: home },
   });
   return {
     stdout: result.stdout.toString(),
