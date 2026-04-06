@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { lstatSync, unlinkSync, symlinkSync } from "node:fs";
 import pc from "picocolors";
+import { select, isCancel } from "@clack/prompts";
 import { detectScope, agentsPath, symlinkTarget } from "../lib/paths";
 import { readConfig, writeConfig, addKit, setActive } from "../lib/config";
 import { createKitDir } from "../lib/kit";
@@ -8,10 +9,10 @@ import { KIT_NAME_RE } from "../lib/validation";
 
 export function registerSwitch(program: Command): void {
   program
-    .command("switch <name>")
+    .command("switch [name]")
     .description("Swap the active kit")
     .option("--create", "create the kit if it doesn't exist, then switch")
-    .action((name: string, opts: { create?: boolean }) => {
+    .action(async (name: string | undefined, opts: { create?: boolean }) => {
       const cwd = process.cwd();
 
       // 1. Detect scope
@@ -22,7 +23,33 @@ export function registerSwitch(program: Command): void {
       }
       const { store, local } = scope;
 
-      // 2. Validate kit name
+      // 2. Read config
+      const config = readConfig(store);
+
+      // 3. If no name given, prompt interactively or error
+      if (name === undefined) {
+        const kitNames = Object.keys(config.kits);
+        if (kitNames.length === 0) {
+          console.error(pc.red("No kits found. Run `agenv create <name>` first."));
+          process.exit(1);
+        }
+        const chosen = await select({
+          message: "Switch to kit:",
+          options: kitNames.map((k) => ({
+            value: k,
+            label: k,
+            hint: config.active === k ? "active" : undefined,
+          })),
+          initialValue: config.active ?? kitNames[0],
+        });
+        if (isCancel(chosen)) {
+          process.exit(0);
+        }
+        // isCancel guard above ensures chosen is not a symbol; cast is safe
+        name = chosen as string;
+      }
+
+      // 4. Validate kit name
       if (!KIT_NAME_RE.test(name)) {
         console.error(
           pc.red(`Invalid kit name "${name}". Only [a-z0-9_-] characters are allowed.`)
@@ -30,28 +57,25 @@ export function registerSwitch(program: Command): void {
         process.exit(1);
       }
 
-      // 3. Read config
-      const config = readConfig(store);
-
-      // 4. Check if kit exists; if not and --create not set, error
+      // 5. Check if kit exists; if not and --create not set, error
       const kitExists = !!config.kits[name];
       if (!kitExists && !opts.create) {
         console.error(pc.red(`Kit "${name}" does not exist.`));
         process.exit(1);
       }
 
-      // 5. If kit doesn't exist and --create is set, create it
+      // 6. If kit doesn't exist and --create is set, create it
       let updatedConfig = config;
       if (!kitExists && opts.create) {
         createKitDir(store, name);
         updatedConfig = addKit(config, name);
       }
 
-      // 6. Set active and write config
+      // 7. Set active and write config
       updatedConfig = setActive(updatedConfig, name);
       writeConfig(store, updatedConfig);
 
-      // 7. Remove old symlink if present
+      // 8. Remove old symlink if present
       try {
         const stat = lstatSync(agentsPath(cwd));
         if (stat.isSymbolicLink()) {
@@ -68,7 +92,7 @@ export function registerSwitch(program: Command): void {
         }
       }
 
-      // 8. Create new .agents symlink
+      // 9. Create new .agents symlink
       try {
         symlinkSync(symlinkTarget(store, name, local), agentsPath(cwd));
       } catch (err) {
@@ -76,7 +100,7 @@ export function registerSwitch(program: Command): void {
         process.exit(1);
       }
 
-      // 9. Print success
+      // 10. Print success
       const createdLabel = !kitExists ? pc.dim(" (created)") : "";
       console.log(
         pc.green("✓") +
