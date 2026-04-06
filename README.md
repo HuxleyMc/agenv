@@ -1,15 +1,141 @@
 # agenv
 
-To install dependencies:
+Manage multiple `.agents/` directories per project — like pyenv/rbenv, but for AI agent kits.
+
+agenv stores named "kits" (sets of agent markdown files) and keeps `.agents/` as a symlink pointing at the active kit. Switching kits is instant.
+
+## Installation
 
 ```bash
 bun install
+bun run build        # compiles → dist/agenv
 ```
 
-To run:
+Then put `dist/agenv` somewhere on your `$PATH`.
+
+## Quick start
 
 ```bash
-bun run src/index.ts
+# In a project directory:
+agenv init                    # bootstrap with a "default" kit
+agenv create backend          # create a new kit
+agenv switch backend          # activate it
+agenv list                    # see all kits
+agenv status                  # show active kit + symlink details
 ```
 
-This project was created using `bun init` in bun v1.3.5. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+## Commands
+
+### `agenv init [name]`
+
+Bootstrap agenv in the current project. Creates a kit store, initializes the named kit (default: `default`), and creates the `.agents/` symlink.
+
+```
+Options:
+  --local       use .agenv/ in cwd instead of ~/.agenv/ (global)
+  --no-migrate  don't absorb existing .agents/ contents into the new kit
+```
+
+If `.agents/` already exists as a plain directory, its files are migrated into the new kit and the directory is replaced with a symlink.
+
+### `agenv create <name>`
+
+Scaffold a new kit.
+
+```
+Options:
+  --from <kit>           copy an existing kit as the starting point
+  --switch               immediately activate after creating
+  -d, --description <t>  short description stored in config.toml
+```
+
+### `agenv switch <name>`
+
+Swap the active kit by relinking `.agents/`.
+
+```
+Options:
+  --create   create the kit if it doesn't exist, then switch
+```
+
+### `agenv list` / `agenv ls`
+
+List all kits.
+
+```
+Options:
+  -v, --verbose  show file counts, descriptions, and creation dates
+  --json         machine-readable JSON output
+```
+
+### `agenv status`
+
+Show the active kit and symlink details.
+
+```
+Options:
+  --porcelain  print only the kit name; exit 1 if not initialized
+  --json       machine-readable JSON output
+```
+
+### `agenv delete <name>` / `agenv rm <name>`
+
+Remove a kit permanently.
+
+```
+Options:
+  --force  allow deleting the active kit (auto-switches to another)
+  -y, --yes  skip confirmation prompt
+```
+
+### `agenv shell-init [shell]`
+
+Emit a shell integration snippet that shows the active kit in your prompt. Pipe it into your shell config.
+
+Supported shells: `bash`, `zsh`, `fish`, `starship`, `pwsh`
+
+```bash
+# bash / zsh
+eval "$(agenv shell-init)"
+
+# fish
+agenv shell-init fish | source
+
+# starship — add to starship.toml
+agenv shell-init starship >> ~/.config/starship.toml
+```
+
+```
+Options:
+  --bin <path>  custom binary path in emitted snippet (default: "agenv")
+```
+
+## How it works
+
+- **Global mode** (`~/.agenv/`): kit store is shared across all projects. Symlink targets are absolute paths.
+- **Local mode** (`.agenv/` in cwd): kit store lives inside the project. Symlink targets are relative, making the store git-portable.
+
+Scope is detected automatically: local `.agenv/` takes precedence over global `~/.agenv/`.
+
+Store layout:
+
+```
+~/.agenv/                  # or .agenv/ for local
+  config.toml              # active kit + kit metadata
+  kits/
+    default/               # kit directory (what .agents/ points at)
+      CLAUDE.md
+      ...
+    backend/
+      CLAUDE.md
+      ...
+```
+
+## Development
+
+```bash
+bun run dev -- <cmd>   # run without building (e.g. bun run dev -- init)
+bun test               # run all tests
+bun run lint           # type-check via tsc --noEmit
+bun run build          # compile self-contained binary → dist/agenv
+```
