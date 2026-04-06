@@ -2,8 +2,9 @@
 set -e
 
 REPO="HuxleyMc/agenv"
-INSTALL_DIR="/usr/local/bin"
 BINARY_NAME="agenv"
+INSTALL_DIR="${HOME}/.local/share/agenv"
+BIN_DIR="${HOME}/.local/bin"
 
 # Detect architecture
 ARCH=$(uname -m)
@@ -41,11 +42,22 @@ trap 'rm -f "$TMP"' EXIT
 curl -fsSL "$URL" -o "$TMP"
 chmod +x "$TMP"
 
-# Install to /usr/local/bin (use sudo if directory not writable)
-if [ -w "$INSTALL_DIR" ]; then
-  mv "$TMP" "${INSTALL_DIR}/${BINARY_NAME}"
-else
-  sudo mv "$TMP" "${INSTALL_DIR}/${BINARY_NAME}"
-fi
+# Install binary to ~/.local/share/agenv/
+mkdir -p "$INSTALL_DIR"
+mv "$TMP" "${INSTALL_DIR}/${BINARY_NAME}"
+
+# Create symlink in ~/.local/bin/
+mkdir -p "$BIN_DIR"
+ln -sf "${INSTALL_DIR}/${BINARY_NAME}" "${BIN_DIR}/${BINARY_NAME}"
 
 printf 'agenv %s installed to %s/%s\n' "$TAG" "$INSTALL_DIR" "$BINARY_NAME"
+printf 'Symlink created at %s/%s\n' "$BIN_DIR" "$BINARY_NAME"
+
+# Remind user to add ~/.local/bin to PATH if needed
+case ":${PATH}:" in
+  *":${BIN_DIR}:"*) ;;
+  *)
+    printf '\nNote: add %s to your PATH:\n' "$BIN_DIR"
+    printf '  export PATH="%s:$PATH"\n' "$BIN_DIR"
+    ;;
+esac
