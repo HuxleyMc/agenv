@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Command } from "commander";
 import pc from "picocolors";
 
@@ -115,6 +117,26 @@ function generateInstructions(shell: ShellType, bin: string): string {
   }
 }
 
+function shellConfigPath(shell: ShellType, home: string): string | null {
+  switch (shell) {
+    case "bash": return join(home, ".bashrc");
+    case "zsh": return join(home, ".zshrc");
+    case "fish": return join(home, ".config", "fish", "config.fish");
+    default: return null;
+  }
+}
+
+function isAlreadyIntegrated(shell: ShellType, home: string): boolean {
+  const configPath = shellConfigPath(shell, home);
+  if (!configPath) return false;
+  try {
+    const contents = readFileSync(configPath, "utf8");
+    return contents.includes(`shell-init ${shell}`);
+  } catch {
+    return false;
+  }
+}
+
 export function registerShellInit(program: Command): void {
   program
     .command("shell-init [shell]")
@@ -154,6 +176,9 @@ export function registerShellInit(program: Command): void {
       }
 
       console.log(snippet);
-      process.stderr.write(generateInstructions(targetShell, opts.bin));
+      const home = process.env.HOME ?? "";
+      if (!isAlreadyIntegrated(targetShell, home)) {
+        process.stderr.write(generateInstructions(targetShell, opts.bin));
+      }
     });
 }

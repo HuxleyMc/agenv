@@ -1,3 +1,5 @@
+import { writeFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { test, expect, beforeEach, afterEach } from "bun:test";
 import { makeTempDir, cleanupTempDir, agenvInDir } from "../fixtures/index";
 
@@ -79,4 +81,38 @@ test("shell-init instructions do not appear in stdout", () => {
 test("shell-init --bin custom is reflected in eval instruction", () => {
   const result = agenvInDir(["shell-init", "zsh", "--bin", "/usr/local/bin/agenv"], tempDir);
   expect(result.stderr).toContain('eval "$(/usr/local/bin/agenv shell-init zsh)"');
+});
+
+test("shell-init suppresses instructions when zsh already integrated", () => {
+  writeFileSync(join(tempDir, ".zshrc"), 'eval "$(agenv shell-init zsh)"\n');
+  const result = agenvInDir(["shell-init", "zsh"], tempDir, { home: tempDir });
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe("");
+});
+
+test("shell-init suppresses instructions when bash already integrated", () => {
+  writeFileSync(join(tempDir, ".bashrc"), 'eval "$(agenv shell-init bash)"\n');
+  const result = agenvInDir(["shell-init", "bash"], tempDir, { home: tempDir });
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe("");
+});
+
+test("shell-init suppresses instructions when fish already integrated", () => {
+  mkdirSync(join(tempDir, ".config", "fish"), { recursive: true });
+  writeFileSync(join(tempDir, ".config", "fish", "config.fish"), 'eval "$(agenv shell-init fish)"\n');
+  const result = agenvInDir(["shell-init", "fish"], tempDir, { home: tempDir });
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe("");
+});
+
+test("shell-init still shows instructions when rc file exists but lacks integration", () => {
+  writeFileSync(join(tempDir, ".zshrc"), "# some other config\n");
+  const result = agenvInDir(["shell-init", "zsh"], tempDir, { home: tempDir });
+  expect(result.stderr).toContain("~/.zshrc");
+});
+
+test("shell-init snippet still emitted to stdout when already integrated", () => {
+  writeFileSync(join(tempDir, ".zshrc"), 'eval "$(agenv shell-init zsh)"\n');
+  const result = agenvInDir(["shell-init", "zsh"], tempDir, { home: tempDir });
+  expect(result.stdout).toContain("add-zsh-hook");
 });
