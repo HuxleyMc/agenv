@@ -41,6 +41,10 @@ Tests in `tests/` mirror the `src/` structure. The fixture helper `tests/fixture
 
 Tests are integration-style: they spawn the real CLI and assert on exit codes, stdout/stderr, and filesystem state. There are no unit test mocks for filesystem or config.
 
+## Workflow
+
+Commit after each logical unit of work — don't batch unrelated changes. Use conventional commits (`feat:`, `fix:`, `chore:`, etc.).
+
 ## Gotchas
 
 - Kit names must match `/^[a-z0-9_-]+$/` — lowercase alphanumeric, hyphens, underscores only
