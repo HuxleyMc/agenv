@@ -46,7 +46,7 @@ test("switch --create creates and switches to new kit", () => {
 test("switch with no name and no kits prints helpful error", () => {
   // init creates a "default" kit, so we delete it to get a store with no kits
   agenvInDir(["init"], tempDir);
-  agenvInDir(["delete", "--force", "-y", "default"], tempDir);
+  agenvInDir(["delete", "-y", "default"], tempDir);
 
   const result = agenvInDir(["switch"], tempDir);
   expect(result.exitCode).toBe(1);

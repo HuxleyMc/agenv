@@ -11,9 +11,8 @@ export function registerDelete(program: Command): void {
     .command("delete <name>")
     .alias("rm")
     .description("Remove a kit permanently")
-    .option("--force", "allow deleting the active kit")
     .option("-y, --yes", "skip confirmation prompt")
-    .action(async (name: string, opts: { force?: boolean; yes?: boolean }) => {
+    .action(async (name: string, opts: { yes?: boolean }) => {
       const cwd = process.cwd();
 
       // 1. Detect scope
@@ -33,14 +32,8 @@ export function registerDelete(program: Command): void {
         process.exit(1);
       }
 
-      // 4. Check if kit is active and --force not set
+      // 4. Check if kit is active
       const isActive = config.active === name;
-      if (isActive && !opts.force) {
-        console.error(
-          pc.red(`Kit "${name}" is currently active. Use --force to delete the active kit.`)
-        );
-        process.exit(1);
-      }
 
       // 5. Confirmation prompt (unless -y/--yes)
       if (!opts.yes) {
