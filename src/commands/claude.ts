@@ -15,13 +15,24 @@ import pc from "picocolors";
 import { detectScope, agentsPath, symlinkTarget, kitPath } from "../lib/paths";
 import { readConfig, writeConfig, addKit, setActive } from "../lib/config";
 
-const CLAUDE_SKILLS_PATH = path.join(os.homedir(), ".claude", "skills");
 const KIT_NAME = "claude";
+
+/**
+ * Resolve which .claude/skills path to use.
+ * Prefers a local .claude/ directory in cwd (project-level) over global ~/.claude/.
+ */
+function resolveClaudeSkillsPath(cwd: string): string {
+  const localClaudeDir = path.join(cwd, ".claude");
+  if (existsSync(localClaudeDir)) {
+    return path.join(localClaudeDir, "skills");
+  }
+  return path.join(os.homedir(), ".claude", "skills");
+}
 
 export function registerClaude(program: Command): void {
   program
     .command("claude")
-    .description("Wire up ~/.claude/skills into a 'claude' kit")
+    .description("Wire up .claude/skills into a 'claude' kit")
     .action(() => {
       const cwd = process.cwd();
 
@@ -33,45 +44,49 @@ export function registerClaude(program: Command): void {
       }
       const { store, local } = scope;
 
-      // 2. Create the claude kit dir if needed
+      // 2. Resolve skills path: local .claude/skills takes precedence over global
+      const claudeSkillsPath = resolveClaudeSkillsPath(cwd);
+      const isLocalSkills = claudeSkillsPath.startsWith(cwd);
+
+      // 3. Create the claude kit dir if needed
       const kDir = kitPath(store, KIT_NAME);
       if (!existsSync(kDir)) {
         mkdirSync(kDir, { recursive: true });
       }
 
-      // 3. Ensure <kit-dir>/skills/ exists as a real directory
+      // 4. Ensure <kit-dir>/skills/ exists as a real directory
       const kitSkillsDir = path.join(kDir, "skills");
       if (!existsSync(kitSkillsDir)) {
         mkdirSync(kitSkillsDir, { recursive: true });
       }
 
-      // 4. Migrate ~/.claude/skills if it's a real directory
+      // 5. Migrate existing skills if the path is a real directory
       const claudeStat = (() => {
-        try { return lstatSync(CLAUDE_SKILLS_PATH); } catch { return null; }
+        try { return lstatSync(claudeSkillsPath); } catch { return null; }
       })();
 
       if (claudeStat && !claudeStat.isSymbolicLink()) {
         if (!claudeStat.isDirectory()) {
-          console.error(pc.red(`error: ${CLAUDE_SKILLS_PATH} exists but is not a directory. Remove it manually and retry.`));
+          console.error(pc.red(`error: ${claudeSkillsPath} exists but is not a directory. Remove it manually and retry.`));
           process.exit(1);
         }
         let migratedCount = 0;
-        for (const entry of readdirSync(CLAUDE_SKILLS_PATH, { withFileTypes: true })) {
+        for (const entry of readdirSync(claudeSkillsPath, { withFileTypes: true })) {
           if (entry.isFile()) {
             copyFileSync(
-              path.join(CLAUDE_SKILLS_PATH, entry.name),
+              path.join(claudeSkillsPath, entry.name),
               path.join(kitSkillsDir, entry.name)
             );
             migratedCount++;
           }
         }
-        rmSync(CLAUDE_SKILLS_PATH, { recursive: true });
-        console.log(pc.dim(`  Migrated ${migratedCount} skill${migratedCount === 1 ? "" : "s"} from ${CLAUDE_SKILLS_PATH}`));
+        rmSync(claudeSkillsPath, { recursive: true });
+        console.log(pc.dim(`  Migrated ${migratedCount} skill${migratedCount === 1 ? "" : "s"} from ${claudeSkillsPath}`));
       } else if (claudeStat?.isSymbolicLink()) {
-        unlinkSync(CLAUDE_SKILLS_PATH);
+        unlinkSync(claudeSkillsPath);
       }
 
-      // 5. Register kit in config if new, set active, write
+      // 6. Register kit in config if new, set active, write
       let config = readConfig(store);
       if (!config.kits[KIT_NAME]) {
         config = addKit(config, KIT_NAME, { description: "Claude Code skills integration" });
@@ -79,7 +94,7 @@ export function registerClaude(program: Command): void {
       config = setActive(config, KIT_NAME);
       writeConfig(store, config);
 
-      // 6. Update .agents/ symlink (same logic as switch)
+      // 7. Update .agents/ symlink
       const agents = agentsPath(cwd);
       const agentsStat = (() => {
         try { return lstatSync(agents); } catch { return null; }
@@ -94,14 +109,14 @@ export function registerClaude(program: Command): void {
       }
       symlinkSync(symlinkTarget(store, KIT_NAME, local), agents);
 
-      // 7. Point ~/.claude/skills → .agents/skills
-      //    Uses the .agents path so it tracks whatever kit is active
+      // 8. Point .claude/skills → .agents/skills
       const agentsSkillsPath = path.join(agents, "skills");
-      mkdirSync(path.dirname(CLAUDE_SKILLS_PATH), { recursive: true });
-      symlinkSync(agentsSkillsPath, CLAUDE_SKILLS_PATH);
+      mkdirSync(path.dirname(claudeSkillsPath), { recursive: true });
+      symlinkSync(agentsSkillsPath, claudeSkillsPath);
 
-      // 8. Print summary
+      // 9. Print summary
+      const scopeLabel = isLocalSkills ? "(local)" : "(global)";
       console.log(pc.green("✓") + ` Kit ${pc.bold(pc.cyan(KIT_NAME))} active`);
-      console.log(pc.dim(`  ~/.claude/skills → ${agentsSkillsPath}`));
+      console.log(pc.dim(`  .claude/skills ${scopeLabel} → ${agentsSkillsPath}`));
     });
 }

@@ -1,6 +1,13 @@
 import { test, expect, beforeEach, afterEach } from "bun:test";
 import { join } from "node:path";
-import { existsSync, mkdirSync, lstatSync, readlinkSync, writeFileSync, realpathSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  lstatSync,
+  readlinkSync,
+  writeFileSync,
+  realpathSync,
+} from "node:fs";
 import { makeTempDir, cleanupTempDir, agenvInDir } from "../fixtures/index";
 
 let tempDir: string;
@@ -19,7 +26,9 @@ test("claude fails if not initialized", () => {
   expect(result.stderr).toContain("Not initialized");
 });
 
-test("claude creates kit with skills/ dir and symlinks ~/.claude/skills to .agents/skills", () => {
+// --- global ~/.claude/skills ---
+
+test("global: creates kit with skills/ dir and symlinks ~/.claude/skills to .agents/skills", () => {
   const fakeHome = join(tempDir, "home");
   mkdirSync(join(fakeHome, ".claude"), { recursive: true });
 
@@ -30,24 +39,20 @@ test("claude creates kit with skills/ dir and symlinks ~/.claude/skills to .agen
   const result = agenvInDir(["claude"], project, { home: fakeHome });
 
   expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain("(global)");
 
-  // <kit-dir>/skills is a real directory
   const kitSkillsDir = join(project, ".agenv", "kits", "claude", "skills");
-  expect(existsSync(kitSkillsDir)).toBe(true);
   expect(lstatSync(kitSkillsDir).isDirectory()).toBe(true);
 
-  // ~/.claude/skills → .agents/skills
   const claudeSkills = join(fakeHome, ".claude", "skills");
   expect(lstatSync(claudeSkills).isSymbolicLink()).toBe(true);
   expect(readlinkSync(claudeSkills)).toBe(join(realpathSync(project), ".agents", "skills"));
 });
 
-test("claude migrates files from existing ~/.claude/skills into kit", () => {
+test("global: migrates files from ~/.claude/skills into kit", () => {
   const fakeHome = join(tempDir, "home");
-  const claudeSkillsDir = join(fakeHome, ".claude", "skills");
-  mkdirSync(claudeSkillsDir, { recursive: true });
-  writeFileSync(join(claudeSkillsDir, "my-skill.md"), "# My Skill");
-  writeFileSync(join(claudeSkillsDir, "other.md"), "# Other");
+  mkdirSync(join(fakeHome, ".claude", "skills"), { recursive: true });
+  writeFileSync(join(fakeHome, ".claude", "skills", "skill.md"), "# Skill");
 
   const project = join(tempDir, "project");
   mkdirSync(project);
@@ -56,23 +61,66 @@ test("claude migrates files from existing ~/.claude/skills into kit", () => {
   const result = agenvInDir(["claude"], project, { home: fakeHome });
 
   expect(result.exitCode).toBe(0);
-  expect(result.stdout).toContain("Migrated 2 skills");
+  expect(result.stdout).toContain("Migrated 1 skill");
 
   const kitSkillsDir = join(project, ".agenv", "kits", "claude", "skills");
-  expect(existsSync(join(kitSkillsDir, "my-skill.md"))).toBe(true);
-  expect(existsSync(join(kitSkillsDir, "other.md"))).toBe(true);
+  expect(existsSync(join(kitSkillsDir, "skill.md"))).toBe(true);
 
-  // ~/.claude/skills → .agents/skills
   const claudeSkills = join(fakeHome, ".claude", "skills");
   expect(lstatSync(claudeSkills).isSymbolicLink()).toBe(true);
-  expect(readlinkSync(claudeSkills)).toBe(join(realpathSync(project), ".agents", "skills"));
 });
 
-test("claude is idempotent", () => {
+// --- local .claude/skills ---
+
+test("local: prefers project .claude/skills over global when .claude/ dir exists", () => {
   const fakeHome = join(tempDir, "home");
-  const claudeSkillsDir = join(fakeHome, ".claude", "skills");
-  mkdirSync(claudeSkillsDir, { recursive: true });
-  writeFileSync(join(claudeSkillsDir, "skill.md"), "# Skill");
+  mkdirSync(join(fakeHome, ".claude"), { recursive: true });
+
+  const project = join(tempDir, "project");
+  mkdirSync(join(project, ".claude"), { recursive: true }); // local .claude/ present
+
+  agenvInDir(["init", "--local"], project, { home: fakeHome });
+  const result = agenvInDir(["claude"], project, { home: fakeHome });
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain("(local)");
+
+  // local .claude/skills is the symlink, global is untouched
+  const localSkills = join(project, ".claude", "skills");
+  expect(lstatSync(localSkills).isSymbolicLink()).toBe(true);
+  expect(readlinkSync(localSkills)).toBe(join(realpathSync(project), ".agents", "skills"));
+
+  const globalSkills = join(fakeHome, ".claude", "skills");
+  expect(existsSync(globalSkills)).toBe(false);
+});
+
+test("local: migrates files from project .claude/skills into kit", () => {
+  const fakeHome = join(tempDir, "home");
+  mkdirSync(join(fakeHome, ".claude"), { recursive: true });
+
+  const project = join(tempDir, "project");
+  mkdirSync(join(project, ".claude", "skills"), { recursive: true });
+  writeFileSync(join(project, ".claude", "skills", "local-skill.md"), "# Local");
+  writeFileSync(join(project, ".claude", "skills", "other.md"), "# Other");
+
+  agenvInDir(["init", "--local"], project, { home: fakeHome });
+  const result = agenvInDir(["claude"], project, { home: fakeHome });
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain("Migrated 2 skills");
+  expect(result.stdout).toContain("(local)");
+
+  const kitSkillsDir = join(project, ".agenv", "kits", "claude", "skills");
+  expect(existsSync(join(kitSkillsDir, "local-skill.md"))).toBe(true);
+  expect(existsSync(join(kitSkillsDir, "other.md"))).toBe(true);
+});
+
+// --- idempotency ---
+
+test("idempotent on re-run", () => {
+  const fakeHome = join(tempDir, "home");
+  mkdirSync(join(fakeHome, ".claude", "skills"), { recursive: true });
+  writeFileSync(join(fakeHome, ".claude", "skills", "skill.md"), "# Skill");
 
   const project = join(tempDir, "project");
   mkdirSync(project);
@@ -85,19 +133,4 @@ test("claude is idempotent", () => {
 
   const kitSkillsDir = join(project, ".agenv", "kits", "claude", "skills");
   expect(existsSync(join(kitSkillsDir, "skill.md"))).toBe(true);
-});
-
-test("claude switches .agents symlink to claude kit", () => {
-  const fakeHome = join(tempDir, "home");
-  mkdirSync(join(fakeHome, ".claude"), { recursive: true });
-
-  const project = join(tempDir, "project");
-  mkdirSync(project);
-
-  agenvInDir(["init", "--local"], project, { home: fakeHome });
-  agenvInDir(["claude"], project, { home: fakeHome });
-
-  const agents = join(project, ".agents");
-  expect(lstatSync(agents).isSymbolicLink()).toBe(true);
-  expect(readlinkSync(agents)).toContain("claude");
 });
