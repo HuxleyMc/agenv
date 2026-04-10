@@ -16,6 +16,7 @@ export interface KitMeta {
 export interface Config {
   active: string;
   kits: Record<string, KitMeta>;
+  auto_switch_on_create?: boolean;
 }
 
 /**
@@ -69,7 +70,12 @@ export function readConfig(store: string): Config {
       }
     }
 
-    return { active, kits };
+    const auto_switch_on_create =
+      typeof parsed.auto_switch_on_create === "boolean"
+        ? parsed.auto_switch_on_create
+        : undefined;
+
+    return { active, kits, ...(auto_switch_on_create !== undefined && { auto_switch_on_create }) };
   } catch (err) {
     throw new Error(`Failed to read config at ${filePath}: ${err}`);
   }
@@ -92,10 +98,13 @@ export function writeConfig(store: string, config: Config): void {
     if (meta.description !== undefined) entry.description = meta.description;
     cleanKits[name] = entry;
   }
-  const serializable = { active: config.active, kits: cleanKits };
+  const serializable: Record<string, unknown> = { active: config.active, kits: cleanKits };
+  if (config.auto_switch_on_create !== undefined) {
+    serializable.auto_switch_on_create = config.auto_switch_on_create;
+  }
 
   // Serialize the config to TOML
-  const tomlString = TOML.stringify(serializable as unknown as Record<string, unknown>);
+  const tomlString = TOML.stringify(serializable);
 
   // Write to file
   writeFileSync(filePath, tomlString, "utf8");

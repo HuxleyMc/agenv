@@ -11,9 +11,10 @@ export function registerCreate(program: Command): void {
     .command("create <name>")
     .description("Scaffold a new kit")
     .option("--from <kit>", "copy an existing kit as the starting point")
-    .option("--switch", "immediately activate after creating")
+    .option("--switch", "force-activate after creating (overrides auto_switch_on_create=false)")
+    .option("--skip-switch", "skip activation even if auto_switch_on_create is enabled")
     .option("-d, --description <text>", "short description stored in config.toml")
-    .action((name: string, opts: { from?: string; switch?: boolean; description?: string }) => {
+    .action((name: string, opts: { from?: string; switch?: boolean; skipSwitch?: boolean; description?: string }) => {
       const cwd = process.cwd();
 
       // 1. Detect scope
@@ -57,17 +58,21 @@ export function registerCreate(program: Command): void {
         copyKitDir(store, opts.from, name);
       }
 
-      // 8. Update config and handle --switch flag
+      // 8. Determine whether to auto-switch
+      // --skip-switch → never; --switch → always; otherwise → auto_switch_on_create (default: true)
+      const shouldSwitch = opts.skipSwitch ? false : (opts.switch ?? (config.auto_switch_on_create ?? true));
+
+      // 9. Update config
       let finalConfig = addKit(config, name, { description: opts.description });
-      if (opts.switch) {
+      if (shouldSwitch) {
         finalConfig = setActive(finalConfig, name);
       }
 
-      // 9. Always write config once at the end
+      // 10. Always write config once at the end
       writeConfig(store, finalConfig);
 
-      // 10. If --switch, handle symlink
-      if (opts.switch) {
+      // 11. If switching, handle symlink
+      if (shouldSwitch) {
         const agents = agentsPath(cwd);
         try {
           const stat = lstatSync(agents);
@@ -83,9 +88,9 @@ export function registerCreate(program: Command): void {
         symlinkSync(symlinkTarget(store, name, local), agents);
       }
 
-      // 11. Print success
+      // 12. Print success
       const fromLabel = opts.from ? pc.dim(` (copied from ${opts.from})`) : "";
-      const switchLabel = opts.switch ? pc.dim(" [active]") : "";
+      const switchLabel = shouldSwitch ? pc.dim(" [active]") : "";
       console.log(
         pc.green("✓") +
           ` Created kit ${pc.bold(pc.cyan(name))}${fromLabel}${switchLabel}`

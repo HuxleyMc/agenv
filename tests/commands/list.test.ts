@@ -13,7 +13,7 @@ afterEach(() => {
 
 test("list shows kits with active marker", () => {
   agenvInDir(["init", "alpha"], tempDir);
-  agenvInDir(["create", "beta"], tempDir);
+  agenvInDir(["create", "beta", "--skip-switch"], tempDir);
 
   const result = agenvInDir(["list"], tempDir);
   expect(result.exitCode).toBe(0);
@@ -23,7 +23,7 @@ test("list shows kits with active marker", () => {
 
 test("list --json output is valid JSON with expected shape", () => {
   agenvInDir(["init", "alpha"], tempDir);
-  agenvInDir(["create", "beta"], tempDir);
+  agenvInDir(["create", "beta", "--skip-switch"], tempDir);
 
   const result = agenvInDir(["list", "--json"], tempDir);
   expect(result.exitCode).toBe(0);
