@@ -2,51 +2,48 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## What this project is
-
-`agenv` is a CLI tool (modelled on pyenv/rbenv) for managing multiple `.agents/` directories per project. It stores "kits" (sets of agent markdown files) in `~/.agenv/` (global) or `.agenv/` (local), and keeps `.agents/` as a symlink pointing at the active kit. Switching kits is instant — just `unlink` + `symlink`.
-
 ## Commands
 
 ```bash
 bun install           # install dependencies
-bun run dev -- <cmd>  # run CLI in dev (e.g. bun run dev -- init)
+bun run dev -- <cmd>  # run CLI without building (e.g. bun run dev -- init)
 bun test              # run all tests
-bun test src/lib/config.test.ts  # run a single test file
+bun test tests/commands/init.test.ts  # run a single test file
 bun run lint          # type-check via tsc --noEmit
 bun run build         # compile self-contained binary → dist/agenv
 ```
 
 ## Architecture
 
-```
-src/
-  index.ts          # CLI entry point (commander); registers all commands
-  lib/
-    paths.ts        # Pure path helpers: resolveStore, kitPath, symlinkTarget, detectScope
-    config.ts       # TOML read/write (smol-toml); immutable helpers: addKit, setActive, removeKit
-    kit.ts          # Filesystem operations: createKitDir, deleteKitDir, copyKitDir, countKitFiles, listKits
-```
+agenv is a CLI tool (TypeScript, Bun runtime) that manages named "kits" (directories of agent config files) and keeps `.agents/` as a symlink pointing at the active one.
 
-**Key design decisions:**
-- `paths.ts` is pure (no I/O); `config.ts` handles TOML I/O; `kit.ts` handles filesystem I/O. Keep these layers separate.
-- Global mode uses absolute symlink targets; local mode uses relative targets (`.agenv/kits/<name>`) so they're git-portable.
-- Scope detection (`detectScope`) checks for local `.agenv/` in cwd first, then global `~/.agenv/`.
-- `config.ts` functions are immutable — they return new `Config` objects rather than mutating.
-- `src/index.ts` is currently a stub (`console.log("Hello via Bun!")`); commands from PLAN.md are not yet wired up.
+**Entry point:** `src/index.ts` — registers all commands via Commander.js and delegates to `src/commands/*.ts`.
 
-## Tech stack
+**Key concepts:**
+- **Store**: `~/.agenv/` (global) or `.agenv/` in cwd (local). Local takes precedence when detected.
+- **Kit**: a directory under `<store>/kits/<name>/`. Only flat files are tracked (no subdirectories).
+- **Active kit**: recorded in `<store>/config.toml` (`active` key). The `.agents/` symlink points to the active kit dir.
+- **Symlink targets**: absolute paths in global mode, relative paths in local mode (git-portable).
 
-- Runtime: Bun (single compiled binary target)
-- CLI framework: `commander`
-- TOML: `smol-toml`
-- Colors: `picocolors`
-- TypeScript strict mode with `noUncheckedIndexedAccess`
+**`src/lib/` modules:**
+- `paths.ts` — all path resolution (`resolveStore`, `detectScope`, `kitPath`, `agentsPath`, `symlinkTarget`)
+- `config.ts` — read/write `config.toml` via `smol-toml`; pure functions (`addKit`, `setActive`, `removeKit`) return new config objects without mutation
+- `kit.ts` — filesystem operations on kit directories (`createKitDir`, `deleteKitDir`, `copyKitDir`, `listKits`, `countKitFiles`)
+- `validation.ts` — shared validation constants (`KIT_NAME_RE = /^[a-z0-9_-]+$/`)
 
-## Bun conventions
+**`src/commands/` modules:** one file per CLI subcommand; each exports a `register*(program)` function.
 
-- Use `bun <file>` not `node` or `ts-node`
-- Use `bun:sqlite`, `Bun.file`, `Bun.serve()`, `Bun.$` — not their Node equivalents
-- Bun auto-loads `.env`; no dotenv needed
-- Tests use `bun:test` (`import { test, expect } from "bun:test"`)
-- Tests live in `tests/` mirroring `src/` structure (see PLAN.md for planned layout)
+## Testing
+
+Tests in `tests/` mirror the `src/` structure. The fixture helper `tests/fixtures/index.ts` provides:
+- `makeTempDir()` / `cleanupTempDir()` — isolated temp dirs per test
+- `agenvInDir(args, cwd, { home? })` — spawns the CLI via `bun src/index.ts` with controlled `HOME` and `cwd`
+
+Tests are integration-style: they spawn the real CLI and assert on exit codes, stdout/stderr, and filesystem state. There are no unit test mocks for filesystem or config.
+
+## Gotchas
+
+- Kit names must match `/^[a-z0-9_-]+$/` — lowercase alphanumeric, hyphens, underscores only
+- `switch` without args shows an interactive `@clack/prompts` menu (requires a TTY); `switch <name>` skips the menu
+- `shell-init [shell]` emits prompt integration snippets for bash/zsh/fish/starship/pwsh; auto-detects shell if omitted
+- `status` shows active kit and symlink details; `status --porcelain` emits just the kit name (used by shell integration)
