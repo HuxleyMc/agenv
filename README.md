@@ -57,12 +57,13 @@ Options:
 
 ### `agenv create <name>`
 
-Scaffold a new kit.
+Scaffold a new kit. Activates the new kit immediately by default.
 
 ```
 Options:
   --from <kit>           copy an existing kit as the starting point
-  --switch               immediately activate after creating
+  --switch               force-activate after creating
+  --skip-switch          skip activation even if auto-switch is enabled
   -d, --description <t>  short description stored in config.toml
 ```
 
@@ -88,13 +89,24 @@ Options:
 
 ### `agenv delete <name>` / `agenv rm <name>`
 
-Remove a kit permanently.
+Remove a kit permanently. If the kit is active, agenv auto-switches to another kit (or clears the active state if no kits remain).
 
 ```
 Options:
-  --force    allow deleting the active kit (auto-switches to another)
   -y, --yes  skip confirmation prompt
 ```
+
+### `agenv claude`
+
+Wire up your Claude Code skills directory into a `claude` kit and make it active. Creates a `claude` kit backed by `.claude/skills/` (or `~/.claude/skills/` globally), migrating any existing skills files into the kit on first run.
+
+```bash
+agenv claude
+# ✓ Kit claude active
+#   .claude/skills (global) → .agents/skills
+```
+
+Prefers a local `.claude/` directory in the current project over the global `~/.claude/`. After running, `.claude/skills` is a symlink into the active kit so changes are reflected immediately.
 
 ### `agenv shell-init [shell]`
 
