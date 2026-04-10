@@ -7,6 +7,7 @@ import { registerList } from "./commands/list";
 import { registerStatus } from "./commands/status";
 import { registerDelete } from "./commands/delete";
 import { registerShellInit } from "./commands/shell-init";
+import { registerClaude } from "./commands/claude";
 
 const program = new Command();
 
@@ -22,5 +23,6 @@ registerList(program);
 registerStatus(program);
 registerDelete(program);
 registerShellInit(program);
+registerClaude(program);
 
 await program.parseAsync(process.argv);
